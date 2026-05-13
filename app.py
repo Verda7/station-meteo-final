@@ -25,11 +25,19 @@ HOURLY = [
 
 MODELS = {
     "Best match Open-Meteo": "best_match",
+
+    # Haute résolution Belgique / nord France
     "AROME France HD": "meteofrance_arome_france_hd",
     "AROME France": "meteofrance_arome_france",
     "ICON-D2": "icon_d2",
+    "ICON-EU": "icon_eu",
+    "ICON Global": "icon_global",
     "HARMONIE KNMI": "knmi_harmonie_arome_europe",
-    "ECMWF IFS": "ecmwf_ifs04",
+    "HARMONIE DMI": "dmi_harmonie_arome_europe",
+
+    # Globaux / longue échéance
+    "GFS Global": "gfs_global",
+    "ECMWF IFS 0.4°": "ecmwf_ifs04",
 }
 
 METAR_STATIONS = {
@@ -175,6 +183,12 @@ def compute_scores(df):
     for col, mask in missing_masks.items():
         if col in d.columns:
             d.loc[mask, col] = np.nan
+
+    # Restaurer les valeurs météo manquantes avant moyenne multi-modèles.
+    if "missing_masks" in locals():
+        for col, mask in missing_masks.items():
+            if col in d.columns:
+                d.loc[mask, col] = np.nan
 
     return d.loc[:, ~d.columns.duplicated()].copy()
 
@@ -435,7 +449,16 @@ days = st.sidebar.slider("Nombre de jours", 1, 7, 3)
 selected = st.sidebar.multiselect(
     "Modèles",
     list(MODELS.keys()),
-    default=["Best match Open-Meteo","AROME France HD","AROME France","ICON-D2","HARMONIE KNMI"]
+    default=[
+        "Best match Open-Meteo",
+        "AROME France HD",
+        "AROME France",
+        "ICON-D2",
+        "ICON-EU",
+        "HARMONIE KNMI",
+        "GFS Global",
+        "ECMWF IFS 0.4°"
+    ]
 )
 station = st.sidebar.selectbox("METAR officiel proche", list(METAR_STATIONS.keys()), index=0)
 st.sidebar.caption("Auto-refresh : 10 minutes. Les tableaux commencent à l’heure actuelle.")
@@ -465,8 +488,11 @@ if all_models_table.empty:
 
 st.caption(f"Valeurs principales prévues pour : {pd.to_datetime(n['time']).strftime('%d/%m/%Y %H:%M')}")
 
+st.caption(f"Modèles utilisés dans la moyenne : {all_models['modele'].nunique()} / {len(selected)}")
+
 if errors:
     with st.expander("Modèles indisponibles ou erreurs API"):
+        st.write("Certains modèles peuvent être indisponibles selon l'échéance, la zone ou la variable demandée. Ils sont ignorés dans la moyenne.")
         for e in errors:
             st.write(e)
 
