@@ -28,3 +28,12 @@ Double-cliquer sur Lancer_Station_REVES.bat
 
 Sur Streamlit Cloud :
 pousser app.py et requirements.txt sur GitHub.
+
+
+V10 — Interface App :
+- Nouvel onglet 📱 Interface App
+- Carte principale type application météo
+- Prévisions horaires visuelles
+- Prévisions quotidiennes visuelles
+- Bandeau vigilance couleur
+- Icônes météo dynamiques

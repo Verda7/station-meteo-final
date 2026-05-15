@@ -436,6 +436,171 @@ fetch('https://api.rainviewer.com/public/weather-maps.json')
 </html>
 """
 
+
+def visual_weather_icon(code, precip=0, cloud=0, score_orage=0):
+    try:
+        code = int(code)
+        precip = float(precip)
+        cloud = float(cloud)
+        score_orage = float(score_orage)
+    except Exception:
+        code, precip, cloud, score_orage = 3, 0, 80, 0
+    if score_orage >= 70 or code in [95, 96, 99]:
+        return "⛈️"
+    if precip >= 2 or code in [63, 65, 81, 82]:
+        return "🌧️"
+    if precip > 0.1 or code in [51, 53, 55, 61, 80]:
+        return "🌦️"
+    if code in [45, 48]:
+        return "🌫️"
+    if cloud >= 80 or code == 3:
+        return "☁️"
+    if cloud >= 35 or code in [1, 2]:
+        return "⛅"
+    return "☀️"
+
+def app_risk_color(score):
+    try:
+        score = float(score)
+    except Exception:
+        score = 0
+    if score < 20:
+        return "#1e7f3f"
+    if score < 40:
+        return "#d4b106"
+    if score < 60:
+        return "#d97706"
+    if score < 80:
+        return "#dc2626"
+    return "#7c3aed"
+
+def app_risk_label(score):
+    try:
+        score = float(score)
+    except Exception:
+        score = 0
+    if score < 20:
+        return "Faible"
+    if score < 40:
+        return "À surveiller"
+    if score < 60:
+        return "Significatif"
+    if score < 80:
+        return "Fort"
+    return "Sévère"
+
+def render_interface_app(avg_table, days=3):
+    if avg_table.empty:
+        st.warning("Aucune donnée disponible pour l'interface app.")
+        return
+
+    now_row = avg_table.iloc[0]
+    icon = visual_weather_icon(now_row.get("weather_code", 3), now_row.get("precipitation", 0), now_row.get("cloud_cover", 0), now_row.get("score_orage", 0))
+    risk = float(now_row.get("score_orage", 0) or 0)
+    risk_color = app_risk_color(risk)
+    risk_label = app_risk_label(risk)
+
+    st.markdown("""
+    <style>
+    .app-card {background: linear-gradient(135deg,#174ea6 0%,#1d4ed8 45%,#0f172a 100%);border-radius:28px;padding:26px;color:white;box-shadow:0 14px 35px rgba(0,0,0,.35);margin-bottom:18px;}
+    .app-title {font-size:34px;font-weight:800;margin-bottom:6px;}
+    .app-sub {opacity:.85;font-size:15px;}
+    .app-temp {font-size:76px;line-height:.95;font-weight:800;}
+    .app-icon {font-size:86px;text-align:center;}
+    .mini-card {background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.20);border-radius:18px;padding:14px;text-align:center;color:white;}
+    .hour-strip {display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;}
+    .hour-card {min-width:92px;background:#111827;border:1px solid #263244;border-radius:18px;padding:12px 10px;text-align:center;color:white;}
+    .hour-icon {font-size:30px;}
+    .day-row {display:grid;grid-template-columns:90px 52px 110px 90px 90px 90px 1fr;gap:8px;align-items:center;background:#111827;border:1px solid #263244;border-radius:16px;padding:10px 12px;color:white;margin-bottom:8px;}
+    .risk-pill {display:inline-block;padding:5px 10px;border-radius:999px;font-weight:700;color:white;font-size:13px;}
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="app-card">
+        <div class="app-title">Frasnes / Rèves</div>
+        <div class="app-sub">Prévision multi-modèles • {pd.to_datetime(now_row["time"]).strftime("%d/%m/%Y %H:%M")}</div>
+        <div style="display:grid;grid-template-columns:1.3fr .7fr;gap:20px;align-items:center;margin-top:18px;">
+            <div>
+                <div class="app-temp">{float(now_row.get("temperature_2m",0)):.1f}°C</div>
+                <div style="font-size:20px;margin-top:6px;">Ressenti {float(now_row.get("apparent_temperature",0)):.1f}°C</div>
+                <div style="font-size:17px;opacity:.9;margin-top:6px;">{now_row.get("temps","variable")}</div>
+            </div>
+            <div class="app-icon">{icon}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:22px;">
+            <div class="mini-card"><b>Pluie</b><br>{float(now_row.get("precipitation",0)):.1f} mm</div>
+            <div class="mini-card"><b>Vent</b><br>{float(now_row.get("wind_speed_10m",0)):.0f} km/h</div>
+            <div class="mini-card"><b>Rafales</b><br>{float(now_row.get("wind_gusts_10m",0)):.0f} km/h</div>
+            <div class="mini-card"><b>Humidité</b><br>{float(now_row.get("relative_humidity_2m",0)):.0f} %</div>
+            <div class="mini-card"><b>Orage</b><br><span style="background:{risk_color};padding:4px 9px;border-radius:99px;">{risk:.0f}/100</span></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    max_storm = float(avg_table.head(24).get("score_orage", pd.Series([0])).max())
+    max_gust = float(avg_table.head(24).get("wind_gusts_10m", pd.Series([0])).max())
+    max_rain = float(avg_table.head(24).get("score_pluie_intense", pd.Series([0])).max())
+    max_super = float(avg_table.head(24).get("risque_supercellule", pd.Series([0])).max())
+    max_risk = max(max_storm, max_rain, max_super)
+    banner_color = app_risk_color(max_risk)
+    banner_label = app_risk_label(max_risk)
+    st.markdown(f"""
+    <div style="background:{banner_color};color:white;border-radius:18px;padding:14px 18px;margin-bottom:18px;font-weight:700;">
+        ⚠️ Niveau vigilance 24h : {banner_label} — Orage {max_storm:.0f}/100 • Pluie intense {max_rain:.0f}/100 • Supercellule {max_super:.0f}/100 • Rafales max {max_gust:.0f} km/h
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.subheader("⏰ Prochaines heures")
+    hour_html = '<div class="hour-strip">'
+    for _, r in avg_table.head(12).iterrows():
+        h_icon = visual_weather_icon(r.get("weather_code",3), r.get("precipitation",0), r.get("cloud_cover",0), r.get("score_orage",0))
+        h_risk_color = app_risk_color(r.get("score_orage",0))
+        hour_html += f"""
+        <div class="hour-card">
+            <div style="opacity:.8;">{pd.to_datetime(r["time"]).strftime("%H:%M")}</div>
+            <div class="hour-icon">{h_icon}</div>
+            <div style="font-size:22px;font-weight:800;">{float(r.get("temperature_2m",0)):.0f}°</div>
+            <div style="font-size:12px;">💧 {float(r.get("precipitation",0)):.1f} mm</div>
+            <div style="font-size:12px;">💨 {float(r.get("wind_gusts_10m",0)):.0f}</div>
+            <div style="height:5px;background:{h_risk_color};border-radius:99px;margin-top:8px;"></div>
+        </div>
+        """
+    hour_html += "</div>"
+    st.markdown(hour_html, unsafe_allow_html=True)
+
+    st.subheader("📅 Prochains jours")
+    d = avg_table.copy()
+    d["date"] = pd.to_datetime(d["time"]).dt.date
+    daily = d.groupby("date").agg(
+        temp_min=("temperature_2m","min"),
+        temp_max=("temperature_2m","max"),
+        rain=("precipitation","sum"),
+        gust=("wind_gusts_10m","max"),
+        storm=("score_orage","max"),
+        supercell=("risque_supercellule","max"),
+        code=("weather_code","first"),
+        cloud=("cloud_cover","mean")
+    ).reset_index().head(days)
+
+    for _, r in daily.iterrows():
+        d_icon = visual_weather_icon(r.get("code",3), r.get("rain",0), r.get("cloud",0), r.get("storm",0))
+        c = app_risk_color(r.get("storm",0))
+        label = app_risk_label(r.get("storm",0))
+        st.markdown(f"""
+        <div class="day-row">
+            <div><b>{pd.to_datetime(r["date"]).strftime("%a")}</b><br>{pd.to_datetime(r["date"]).strftime("%d/%m")}</div>
+            <div style="font-size:32px;">{d_icon}</div>
+            <div><b>{float(r["temp_min"]):.0f}° / {float(r["temp_max"]):.0f}°C</b></div>
+            <div>💧 {float(r["rain"]):.1f} mm</div>
+            <div>💨 {float(r["gust"]):.0f} km/h</div>
+            <div>⛈️ {float(r["storm"]):.0f}/100</div>
+            <div><span class="risk-pill" style="background:{c};">{label}</span></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.caption("Interface visuelle basée sur la moyenne multi-modèles. Les alertes restent indicatives et doivent être confirmées avec radar/observations.")
+
 # SIDEBAR
 st.sidebar.header("Réglages")
 
@@ -510,12 +675,15 @@ if alerts:
 else:
     st.success("Pas d’alerte forte selon les seuils actuels.")
 
-tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "📡 Observé Rèves","🌤️ Météo complète","⛈️ Orages","🌧️ Radar","🛩️ METAR","📅 Résumé","📈 Graphiques","🧪 Par modèle"
+tab0, tab_app, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    "📡 Observé Rèves","📱 Interface App","🌤️ Météo complète","⛈️ Orages","🌧️ Radar","🛩️ METAR","📅 Résumé","📈 Graphiques","🧪 Par modèle"
 ])
 
 with tab0:
     components.iframe(REVES_URL, height=850, scrolling=True)
+
+with tab_app:
+    render_interface_app(avg_table, days)
 
 with tab1:
     cols = ["time","temps","type_nuages","temperature_2m","apparent_temperature","precipitation","precipitation_probability","cloud_cover","cloud_cover_low","cloud_cover_mid","cloud_cover_high","ensoleillement_score","wind_speed_10m","wind_gusts_10m","direction_vent","wind_direction_10m","relative_humidity_2m","dew_point_2m","pressure_msl","visibility","uv_index"]
