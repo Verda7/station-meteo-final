@@ -10,8 +10,6 @@ echo.
 echo Tache planifiee creee : verification alertes toutes les 10 minutes.
 pause
 
-Station Météo — Frasnes / Rèves V8 MULTI-MODÈLES
-
 Ajouts V8 :
 - GFS Global
 - ICON-EU
