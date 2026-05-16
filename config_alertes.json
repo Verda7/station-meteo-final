@@ -1,0 +1,15 @@
+{
+  "telegram_bot_token": "TON_TOKEN_BOT_TELEGRAM",
+  "telegram_chat_id": "TON_CHAT_ID",
+  "lookahead_hours": 48,
+  "cooldown_hours": 3,
+  "thresholds": {
+    "score_orage": 70,
+    "score_pluie_intense": 70,
+    "score_grele": 60,
+    "score_tornade_approximatif": 55,
+    "risque_downburst": 65,
+    "risque_supercellule": 65,
+    "wind_gusts_10m": 75
+  }
+}
