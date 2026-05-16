@@ -656,27 +656,32 @@ def render_interface_app(avg_table, days=3):
 
     st.subheader("⏰ Prochaines heures")
 
-    cards = []
-    for _, r in d0.head(12).iterrows():
-        h_icon = visual_weather_icon(
-            r.get("weather_code", 3),
-            r.get("precipitation", 0),
-            r.get("cloud_cover", 0),
-            r.get("score_orage", 0),
-        )
-        h_risk_color = app_risk_color(r.get("score_orage", 0))
-        cards.append(f"""
-        <div class="hour-card">
-            <div style="opacity:.8;">{pd.to_datetime(r["time"]).strftime("%H:%M")}</div>
-            <div class="hour-icon">{h_icon}</div>
-            <div style="font-size:22px;font-weight:800;">{safe_float(r.get("temperature_2m")):.0f}°</div>
-            <div style="font-size:12px;">💧 {safe_float(r.get("precipitation")):.1f} mm</div>
-            <div style="font-size:12px;">💨 {safe_float(r.get("wind_gusts_10m")):.0f}</div>
-            <div style="height:5px;background:{h_risk_color};border-radius:99px;margin-top:8px;"></div>
-        </div>
-        """)
-
-    st.markdown('<div class="hour-strip">' + "".join(cards) + "</div>", unsafe_allow_html=True)
+    hour_rows = list(d0.head(12).iterrows())
+    for start in range(0, len(hour_rows), 4):
+        cols = st.columns(4)
+        for col, (_, r) in zip(cols, hour_rows[start:start+4]):
+            h_icon = visual_weather_icon(
+                r.get("weather_code", 3),
+                r.get("precipitation", 0),
+                r.get("cloud_cover", 0),
+                r.get("score_orage", 0),
+            )
+            with col:
+                st.markdown(
+                    f"""
+                    <div style="background:#111827;border:1px solid #263244;border-radius:18px;
+                    padding:12px 10px;text-align:center;color:white;margin-bottom:10px;">
+                        <div style="opacity:.8;">{pd.to_datetime(r["time"]).strftime("%H:%M")}</div>
+                        <div style="font-size:30px;">{h_icon}</div>
+                        <div style="font-size:22px;font-weight:800;">{safe_float(r.get("temperature_2m")):.0f}°</div>
+                        <div style="font-size:12px;">💧 {safe_float(r.get("precipitation")):.1f} mm</div>
+                        <div style="font-size:12px;">💨 {safe_float(r.get("wind_gusts_10m")):.0f} km/h</div>
+                        <div style="height:5px;background:{app_risk_color(r.get("score_orage", 0))};
+                        border-radius:99px;margin-top:8px;"></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
     st.subheader("📅 Prochains jours")
 
