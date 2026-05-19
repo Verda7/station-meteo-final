@@ -811,3 +811,17 @@ try:
 except Exception as e:
     st.error("Erreur de chargement météo")
     st.code(str(e))
+st.markdown("""
+<div style="
+margin-top: 40px;
+padding-top: 15px;
+border-top: 1px solid rgba(255,255,255,0.08);
+text-align: center;
+font-size: 12px;
+color: rgba(255,255,255,0.55);
+line-height: 1.6;
+">
+© 2026 David Vergucht — Station Météo Frasnes / Rèves<br>
+Tous droits réservés
+</div>
+""", unsafe_allow_html=True)
