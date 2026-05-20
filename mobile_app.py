@@ -118,13 +118,13 @@ def icon_for(row, storm=0):
     if sunshine_h >= 0.65:
         return icon_img("peu_nuageux.png")
     if sunshine_h >= 0.25:
-        return icon_img("partiellement_nuageux.png")
+        return icon_img("partiellement_nuageux_plus_cache.png")
     if c == 0 or cloud < 18:
         return icon_img("ciel_clair.png")
     if c == 1 or cloud < 38:
         return icon_img("peu_nuageux.png")
     if c == 2 or cloud < 72:
-        return icon_img("partiellement_nuageux.png")
+        return icon_img("partiellement_nuageux_plus_cache.png")
     return icon_img("tres_nuageux.png")
 
 
