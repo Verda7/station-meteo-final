@@ -135,7 +135,7 @@ def icon_for(row, storm=0):
 
 def code_level(score, storm=0):
     s=fnum(score)
-        o=fnum(storm)
+    o=fnum(storm)
     if o>=90: return "VIOLET","#7c3aed","Orage violent"
     if o>=70: return "ROUGE","#dc2626","Orage fort"
     if o>=50: return "ORANGE","#f97316","Risque orageux"
