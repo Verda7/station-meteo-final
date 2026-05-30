@@ -133,12 +133,17 @@ def icon_for(row, storm=0):
     return icon_img("tres_nuageux.png")
 
 
-def code_level(score):
+def code_level(score, storm=0):
     s=fnum(score)
-    if s<50: return "VERT","#15803d","Calme"
-    if s<68: return "JAUNE","#ca8a04","À surveiller"
-    if s<82: return "ORANGE","#f97316","Significatif"
-    if s<94: return "ROUGE","#dc2626","Fort"
+        o=fnum(storm)
+    if o>=90: return "VIOLET","#7c3aed","Orage violent"
+    if o>=70: return "ROUGE","#dc2626","Orage fort"
+    if o>=50: return "ORANGE","#f97316","Risque orageux"
+    if o>=35: return "JAUNE","#ca8a04","Risque orageux"
+    if s<35: return "VERT","#15803d","Calme"
+    if s<50: return "JAUNE","#ca8a04","À surveiller"
+    if s<70: return "ORANGE","#f97316","Significatif"
+    if s<90: return "ROUGE","#dc2626","Fort"
     return "VIOLET","#7c3aed","Sévère"
 
 def css():
@@ -333,7 +338,7 @@ def render_home(df,models):
     with c1: st.markdown(f'<div class="card"><b>Pluie</b><br><span style="font-size:22px;font-weight:900;">{fnum(r["precipitation"]):.1f} mm</span></div>',unsafe_allow_html=True)
     with c2: st.markdown(f'<div class="card"><b>Vent</b><br><span style="font-size:22px;font-weight:900;">{fnum(r["wind_speed_10m"]):.0f} km/h</span></div>',unsafe_allow_html=True)
     with c3: st.markdown(f'<div class="card"><b>Rafales</b><br><span style="font-size:22px;font-weight:900;">{fnum(r["wind_gusts_10m"]):.0f} km/h</span></div>',unsafe_allow_html=True)
-    score,storm,rain,hail,down,sup,tor,gust=risk_24h(df); code,color,label=code_level(score)
+    score,storm,rain,hail,down,sup,tor,gust=risk_24h(df); code,color,label=code_level(score, storm)
     st.markdown(f'<div class="alert" style="background:{color};"><div class="bigcode">CODE {code}</div>{label} sur 24h<br><span class="small">⛈️ {storm:.0f}/100 · 🌧️ {rain:.0f}/100 · 🧊 {hail:.0f}/100 · 🌀 {sup:.0f}/100 · 💨 {gust:.0f} km/h</span></div>',unsafe_allow_html=True)
     st.caption("Modèles utilisés : " + ", ".join(models))
 
