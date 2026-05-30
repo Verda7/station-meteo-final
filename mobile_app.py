@@ -100,7 +100,7 @@ def icon_for(row, storm=0):
 
     if fog_possible(row):
         return icon_img("brouillard.png")
-    if fnum(storm) >= 82 or c in [95,96,99]:
+    if fnum(storm) >= 35 or c in [95,96,99]:
         return icon_img("orage.png")
     if c in [51,53,55] and rain < 1:
         return icon_img("bruine.png")
@@ -452,7 +452,7 @@ def period_icon_for_summary(df, date, start_h, end_h):
 
     wet_signal = rain > 0.05 or proba >= 45 or code_med in [51,53,55,61,63,65,80,81,82]
 
-    if storm >= 70 or code_med in [95, 96, 99]:
+    if storm >= 35 or code_med in [95, 96, 99]:
         return icon_img("orage.png", 28)
 
     # Cas important : averses + éclaircies.
