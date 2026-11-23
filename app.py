@@ -856,3 +856,5 @@ with tab6:
 with tab7:
     cols = ["time","modele","temperature_2m","apparent_temperature","precipitation","wind_gusts_10m","direction_vent","wind_direction_10m","dew_point_2m","pressure_msl","cape","freezing_level_height","score_orage","score_grele","score_tornade_approximatif","risque_downburst","risque_supercellule"]
     st.dataframe(display_table(all_models_table[[c for c in cols if c in all_models_table.columns]], 1), use_container_width=True, hide_index=True)
+st.divider()
+st.caption("© 2026 David Vergucht")
