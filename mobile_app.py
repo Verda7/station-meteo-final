@@ -912,3 +912,5 @@ try:
 except Exception as e:
     st.error("Erreur de chargement météo")
     st.code(str(e))
+st.divider()
+st.caption("© 2026 David Vergucht")
