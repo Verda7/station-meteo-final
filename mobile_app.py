@@ -154,7 +154,7 @@ def code_level(score, storm=0):
 def css():
     st.markdown('''
 <style>
-.block-container{max-width:570px;padding-top:.8rem;padding-left:.7rem;padding-right:.7rem}
+.block-container{max-width:570px;padding-top:3.5rem!important;padding-left:.7rem;padding-right:.7rem}
 div[data-testid="stToolbar"]{display:none}
 .hero{background:linear-gradient(160deg,#2563eb 0%,#1e3a8a 46%,#020617 100%);border-radius:30px;padding:22px;color:white;margin-bottom:14px;box-shadow:0 14px 30px rgba(0,0,0,.30)}
 .card{background:#0f172a;border:1px solid #263244;color:white;border-radius:18px;padding:12px;text-align:center;margin-bottom:10px}
@@ -330,7 +330,7 @@ def render_period_card(name,s,night=""):
     html=f'''<div class="period"><div style="display:flex;align-items:center;justify-content:space-between;"><div><b>{title}</b><br><span class="small">{s["label"]}{fog}</span></div><div style="font-size:35px;">{s["icon"]}</div><span class="pill" style="background:{s["color"]};">{s["code"]}</span></div><div style="margin-top:8px;font-size:12px;">🌡️ {s["temp_label"]} {s["temp"]:.0f}°C · ressenti {s["feel"]:.0f}°C<br>↕️ min/max {s["temp_min"]:.0f}/{s["temp_max"]:.0f}°C<br>💧 {s["rain"]:.1f} mm · proba {s["rain_proba"]:.0f}%<br>💨 vent {s["wind"]:.0f} km/h · rafales {s["gust"]:.0f} km/h<br>⛈️ orage {s["storm"]:.0f}/100 · 🧊 grêle {s["hail"]:.0f}/100 · UV {s["uv"]:.1f}</div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
-def render_home(df,models):
+def render_weather_banner(df):
     now_ref = pd.Timestamp.now(tz="Europe/Brussels").tz_localize(None)
     future = df[df["time"] > now_ref].copy()
     if future.empty:
@@ -338,7 +338,10 @@ def render_home(df,models):
     else:
         r = future.iloc[0]
     storm=fnum(r["score_orage"]); ico=icon_for(r,storm); desc="Brume / brouillard possible" if fog_possible(r) else r["temps"]
-    st.markdown(f'''<div class="hero"><div style="font-size:34px;font-weight:950;">Météo</div><div style="font-size:16px;font-weight:600;line-height:1.35;margin:2px 0 8px;">Rèves, Frasnes-Lez-Gosselies et environs</div><div style="opacity:.82;margin-bottom:15px;">Prochaine heure • {pd.to_datetime(r["time"]).strftime("%d/%m %H:%M")}</div><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:68px;font-weight:950;line-height:.92;">{fnum(r["temperature_2m"]):.1f}°C</div><div style="font-size:21px;">Ressenti {fnum(r["apparent_temperature"]):.1f}°C</div><div style="font-size:17px;margin-top:10px;">{desc}</div></div><div style="font-size:78px;">{ico}</div></div></div>''',unsafe_allow_html=True)
+    st.markdown(f'''<div class="hero"><div style="font-size:34px;font-weight:950;">Météo</div><div style="font-size:16px;font-weight:600;line-height:1.35;margin:2px 0 8px;">Rèves, Frasnes-Lez-Gosselies et environs</div><div class="small" style="margin-bottom:8px;">© 2026 David Vergucht</div><div style="opacity:.82;margin-bottom:15px;">Prochaine heure • {pd.to_datetime(r["time"]).strftime("%d/%m %H:%M")}</div><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:68px;font-weight:950;line-height:.92;">{fnum(r["temperature_2m"]):.1f}°C</div><div style="font-size:21px;">Ressenti {fnum(r["apparent_temperature"]):.1f}°C</div><div style="font-size:17px;margin-top:10px;">{desc}</div></div><div style="font-size:78px;">{ico}</div></div></div>''',unsafe_allow_html=True)
+    return r
+
+def render_home(df, models, r):
     c1,c2,c3=st.columns(3)
     with c1: st.markdown(f'<div class="card"><b>Pluie</b><br><span style="font-size:22px;font-weight:900;">{fnum(r["precipitation"]):.1f} mm</span></div>',unsafe_allow_html=True)
     with c2: st.markdown(f'<div class="card"><b>Vent</b><br><span style="font-size:22px;font-weight:900;">{fnum(r["wind_speed_10m"]):.0f} km/h</span></div>',unsafe_allow_html=True)
@@ -883,8 +886,7 @@ def graphs(df):
 
 css()
 
-st.markdown("### Modèles météo")
-st.caption("Choisis un modèle seul ou plusieurs modèles pour faire une moyenne.")
+weather_banner = st.container()
 
 default_models = ["Best match", "ECMWF IFS", "ICON-EU", "AROME France HD"]
 selected_models = st.multiselect(
@@ -900,9 +902,11 @@ try:
     df,errors,model_names=load_multimodel(selected_models)
     now=pd.Timestamp.now(tz="Europe/Brussels").tz_localize(None)
     df=df[df["time"]>=(now-pd.Timedelta(hours=1))].copy()
+    with weather_banner:
+        next_hour = render_weather_banner(df)
     tab_home,tab_week,tab_summary,tab_alerts,tab_graphs,tab_radar,tab_details=st.tabs(["🏠 Jour","📅 Semaine","🗓️ Résumé 7j","⚠️ Alertes","📈 Graphiques","🌧️ Radar","📊 Détails"])
     with tab_home:
-        render_home(df,model_names); today_summary(df); today_periods(df); st.caption("V13.2 — soleil, pluie faible/modérée/forte et résumé compact.")
+        render_home(df,model_names,next_hour); today_summary(df); today_periods(df); st.caption("V13.2 — soleil, pluie faible/modérée/forte et résumé compact.")
     with tab_week: week_periods(df)
     with tab_summary: summary_7_days(df)
     with tab_alerts: alerts(df)
