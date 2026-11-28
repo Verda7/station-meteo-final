@@ -1,6 +1,8 @@
-streamlit
+streamlit>=1.37
+streamlit-autorefresh
 pandas
 numpy
 requests
 plotly
 Pillow
+astral==3.2

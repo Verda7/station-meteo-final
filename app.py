@@ -5,6 +5,8 @@ import requests
 import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
 
+from reves_live import banner_sky, banner_values
+
 st.set_page_config(page_title="Station Météo — Frasnes / Rèves", page_icon="⛈️", layout="wide")
 
 # Auto-refresh toutes les 10 minutes
@@ -501,7 +503,8 @@ def safe_float(value, default=0):
     except Exception:
         return default
 
-def render_interface_app(avg_table, days=3):
+@st.fragment(run_every=60)
+def render_interface_app(avg_table, days=3, use_reves=True):
     if avg_table is None or avg_table.empty:
         st.warning("Aucune donnée disponible pour l'interface app.")
         return
@@ -526,6 +529,13 @@ def render_interface_app(avg_table, days=3):
         now_row.get("score_orage", 0),
     )
 
+    description = now_row.get("temps", "variable")
+    sky_source = ""
+    if use_reves:
+        icon, description, sky_source = banner_sky(
+            LAT_DEFAULT, LON_DEFAULT, icon, description, icon == "☀️"
+        )
+    sky_note = f'<div class="app-sub">{sky_source}</div>' if sky_source else ""
     risk = safe_float(now_row.get("score_orage", 0))
     risk_color = app_risk_color(risk)
 
@@ -618,15 +628,17 @@ def render_interface_app(avg_table, days=3):
     </style>
     """, unsafe_allow_html=True)
 
+    heading, temperature, feel = banner_values(now_row, use_reves)
     st.markdown(f"""
     <div class="app-card">
         <div class="app-title">Frasnes / Rèves</div>
-        <div class="app-sub">Prévision multi-modèles • {pd.to_datetime(now_row["time"]).strftime("%d/%m/%Y %H:%M")}</div>
+        <div class="app-sub">{heading}</div>
         <div style="display:grid;grid-template-columns:1.3fr .7fr;gap:20px;align-items:center;margin-top:18px;">
             <div>
-                <div class="app-temp">{safe_float(now_row.get("temperature_2m")):.1f}°C</div>
-                <div style="font-size:20px;margin-top:6px;">Ressenti {safe_float(now_row.get("apparent_temperature")):.1f}°C</div>
-                <div style="font-size:17px;opacity:.9;margin-top:6px;">{now_row.get("temps","variable")}</div>
+                <div class="app-temp">{temperature}</div>
+                <div style="font-size:20px;margin-top:6px;">{feel}</div>
+                <div style="font-size:17px;opacity:.9;margin-top:6px;">{description}</div>
+                {sky_note}
             </div>
             <div class="app-icon">{icon}</div>
         </div>
@@ -803,7 +815,7 @@ with tab0:
     components.iframe(REVES_URL, height=850, scrolling=True)
 
 with tab_app:
-    render_interface_app(avg_table, days)
+    render_interface_app(avg_table, days, use_reves=(lat, lon) == (LAT_DEFAULT, LON_DEFAULT))
 
 with tab1:
     cols = ["time","temps","type_nuages","temperature_2m","apparent_temperature","precipitation","precipitation_probability","cloud_cover","cloud_cover_low","cloud_cover_mid","cloud_cover_high","ensoleillement_score","wind_speed_10m","wind_gusts_10m","direction_vent","wind_direction_10m","relative_humidity_2m","dew_point_2m","pressure_msl","visibility","uv_index"]

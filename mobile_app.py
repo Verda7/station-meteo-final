@@ -10,6 +10,8 @@ import plotly.graph_objects as go
 import base64
 from pathlib import Path
 
+from reves_live import banner_sky, banner_values
+
 @st.cache_data
 def _icon_b64(filename):
     p = Path(__file__).parent / "icons" / filename
@@ -330,16 +332,42 @@ def render_period_card(name,s,night=""):
     html=f'''<div class="period"><div style="display:flex;align-items:center;justify-content:space-between;"><div><b>{title}</b><br><span class="small">{s["label"]}{fog}</span></div><div style="font-size:35px;">{s["icon"]}</div><span class="pill" style="background:{s["color"]};">{s["code"]}</span></div><div style="margin-top:8px;font-size:12px;">🌡️ {s["temp_label"]} {s["temp"]:.0f}°C · ressenti {s["feel"]:.0f}°C<br>↕️ min/max {s["temp_min"]:.0f}/{s["temp_max"]:.0f}°C<br>💧 {s["rain"]:.1f} mm · proba {s["rain_proba"]:.0f}%<br>💨 vent {s["wind"]:.0f} km/h · rafales {s["gust"]:.0f} km/h<br>⛈️ orage {s["storm"]:.0f}/100 · 🧊 grêle {s["hail"]:.0f}/100 · UV {s["uv"]:.1f}</div></div>'''
     st.markdown(html,unsafe_allow_html=True)
 
-def render_weather_banner(df):
+def next_forecast_row(df):
     now_ref = pd.Timestamp.now(tz="Europe/Brussels").tz_localize(None)
-    future = df[df["time"] > now_ref].copy()
-    if future.empty:
-        r = df.iloc[0]
+    future = df[df["time"] > now_ref]
+    if not future.empty:
+        return future.iloc[0]
+    return df.iloc[0] if not df.empty else None
+
+
+@st.fragment(run_every=60)
+def render_weather_banner(forecast):
+    heading, temperature, feel = banner_values(forecast)
+    if forecast is None:
+        icon, description, clear = "", "", False
     else:
-        r = future.iloc[0]
-    storm=fnum(r["score_orage"]); ico=icon_for(r,storm); desc="Brume / brouillard possible" if fog_possible(r) else r["temps"]
-    st.markdown(f'''<div class="hero"><div style="font-size:34px;font-weight:950;">Météo</div><div style="font-size:16px;font-weight:600;line-height:1.35;margin:2px 0 8px;">Rèves, Frasnes-Lez-Gosselies et environs</div><div class="small" style="margin-bottom:8px;">© 2026 David Vergucht</div><div style="opacity:.82;margin-bottom:15px;">Prochaine heure • {pd.to_datetime(r["time"]).strftime("%d/%m %H:%M")}</div><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:68px;font-weight:950;line-height:.92;">{fnum(r["temperature_2m"]):.1f}°C</div><div style="font-size:21px;">Ressenti {fnum(r["apparent_temperature"]):.1f}°C</div><div style="font-size:17px;margin-top:10px;">{desc}</div></div><div style="font-size:78px;">{ico}</div></div></div>''',unsafe_allow_html=True)
-    return r
+        icon = icon_for(forecast, fnum(forecast["score_orage"]))
+        description = "Brume / brouillard possible" if fog_possible(forecast) else forecast["temps"]
+        clear = icon == icon_img("ciel_clair.png")
+    icon, description, sky_source = banner_sky(LAT, LON, icon, description, clear)
+    condition = f'<div style="font-size:17px;margin-top:10px;">{description}</div>' if description else "<!-- ciel indisponible -->"
+    sky_note = f'<div class="small" style="margin-top:10px;">{sky_source}</div>' if sky_source else "<!-- source indisponible -->"
+    st.markdown(f'''<div class="hero">
+<div style="font-size:34px;font-weight:950;">Météo</div>
+<div style="font-size:16px;font-weight:600;line-height:1.35;margin:2px 0 8px;">Rèves, Frasnes-Lez-Gosselies et environs</div>
+<div class="small" style="margin-bottom:8px;">© 2026 David Vergucht</div>
+<div style="opacity:.82;margin-bottom:15px;">{heading}</div>
+<div style="display:flex;justify-content:space-between;align-items:center;">
+<div>
+<div style="font-size:68px;font-weight:950;line-height:.92;">{temperature}</div>
+<div style="font-size:21px;">{feel}</div>
+{condition}
+</div>
+<div style="font-size:78px;">{icon}</div>
+</div>
+{sky_note}
+</div>''', unsafe_allow_html=True)
+
 
 def render_home(df, models, r):
     c1,c2,c3=st.columns(3)
@@ -898,12 +926,18 @@ selected_models = st.multiselect(
 if not selected_models:
     selected_models = ["Best match"]
 
+banner_rendered = False
 try:
     df,errors,model_names=load_multimodel(selected_models)
     now=pd.Timestamp.now(tz="Europe/Brussels").tz_localize(None)
     df=df[df["time"]>=(now-pd.Timedelta(hours=1))].copy()
+    next_hour = next_forecast_row(df)
     with weather_banner:
-        next_hour = render_weather_banner(df)
+        render_weather_banner(next_hour)
+    banner_rendered = True
+    if next_hour is None:
+        st.warning("Prévisions indisponibles.")
+        st.stop()
     tab_home,tab_week,tab_summary,tab_alerts,tab_graphs,tab_radar,tab_details=st.tabs(["🏠 Jour","📅 Semaine","🗓️ Résumé 7j","⚠️ Alertes","📈 Graphiques","🌧️ Radar","📊 Détails"])
     with tab_home:
         render_home(df,model_names,next_hour); today_summary(df); today_periods(df); st.caption("V13.2 — soleil, pluie faible/modérée/forte et résumé compact.")
@@ -914,6 +948,9 @@ try:
     with tab_radar: radar()
     with tab_details: details(df,errors)
 except Exception as e:
+    if not banner_rendered:
+        with weather_banner:
+            render_weather_banner(None)
     st.error("Erreur de chargement météo")
     st.code(str(e))
 st.divider()
