@@ -196,6 +196,8 @@ def banner_sky(latitude, longitude, forecast_icon, forecast_label, forecast_clea
             }
             icon, label = icons[code]
             return icon, description or label, f"Observé à EBCI · {observed_at:%H:%M}"
+       if forecast_label.strip().casefold() == "couvert":
+        return "☁️", forecast_label, "Estimation du ciel"
     if night and forecast_clear:
         return "🌙", "Ciel serein", "Estimation du ciel"
     return forecast_icon, forecast_label, "Estimation du ciel" if forecast_label else ""
